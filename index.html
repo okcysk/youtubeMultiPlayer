@@ -67,6 +67,19 @@
     .thumb-wrap{position:relative}
     .thumb{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#08090b;cursor:pointer}
     .results.shorts-mode .thumb{aspect-ratio:9/16}
+    .duration-badge{
+      position:absolute;
+      bottom:6px;
+      right:6px;
+      padding:2px 6px;
+      border-radius:4px;
+      background:#000c;
+      color:#fff;
+      font-size:11px;
+      font-weight:600;
+      line-height:1.2;
+      pointer-events:none;
+    }
     .badge-shorts{
       position:absolute;
       bottom:6px;
@@ -177,27 +190,46 @@
       updateSelection();
       results.classList.toggle('shorts-mode',shortsOnly);
 
-      let searchWord=q;
-      if(shortsOnly && searchWord && !searchWord.includes('#shorts') && !searchWord.toLowerCase().includes('shorts')){
-        searchWord=`${searchWord} #shorts`;
-      }
-
       const endpoint=new URL(`${api}/search`);
-      endpoint.searchParams.set('q',searchWord||(shortsOnly?'#shorts':'popular'));
       if(shortsOnly){
+        let searchWord=q;
+        if(searchWord && !searchWord.includes('#shorts') && !searchWord.toLowerCase().includes('shorts')){
+          searchWord=`${searchWord} #shorts`;
+        }
+        endpoint.searchParams.set('q',searchWord||'#shorts');
         endpoint.searchParams.set('shorts','1');
+      }else{
+        endpoint.searchParams.set('q',q||'trending');
       }
 
       try{
         const response=await fetch(endpoint.href);
         const data=await response.json();
         if(!response.ok)throw Error(data.error||'検索に失敗しました。');
-        videos=data.videos||[];
+        const rawVideos=data.videos||[];
+
+        // クライアント側での安全フィルタリング:
+        // 通常検索時は isShort === true のショート動画を除外し、通常動画のみを表示する
+        // ショート検索時は isShort === true、または再生時間のないショート動画のみを表示する
+        let filtered=rawVideos.filter(video=>{
+          if(shortsOnly){
+            return video.isShort===true || !video.duration;
+          }else{
+            return video.isShort!==true;
+          }
+        });
+        videos=filtered.length>0?filtered:rawVideos;
+
         for(const video of videos){
           const card=document.createElement('article');
           card.className='card';
-          const isShort=shortsOnly||video.isShort;
-          card.innerHTML=`<div class="thumb-wrap"><img class="thumb" loading="lazy" src="${video.thumbnail}" alt="">${isShort?'<span class="badge-shorts">Shorts</span>':''}</div><label><input type="checkbox"><span class="title"></span></label>`;
+          let badgeHtml='';
+          if(shortsOnly || video.isShort===true){
+            badgeHtml='<span class="badge-shorts">Shorts</span>';
+          }else if(video.duration){
+            badgeHtml=`<span class="duration-badge">${video.duration}</span>`;
+          }
+          card.innerHTML=`<div class="thumb-wrap"><img class="thumb" loading="lazy" src="${video.thumbnail}" alt="">${badgeHtml}</div><label><input type="checkbox"><span class="title"></span></label>`;
           card.querySelector('.title').textContent=video.title;
           const checkbox=card.querySelector('input');
           checkbox.addEventListener('change',()=>{
@@ -222,7 +254,7 @@
           });
           results.append(card);
         }
-        setStatus(`${videos.length} 件${shortsOnly?'のショート動画':''}を表示中。`);
+        setStatus(`${videos.length} 件${shortsOnly?'のショート動画':'の通常動画'}を表示中。`);
       }catch(error){
         setStatus(error.message,true);
       }finally{
