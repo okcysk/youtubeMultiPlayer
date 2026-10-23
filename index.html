@@ -13,6 +13,10 @@
     .sticky{position:fixed;z-index:5;top:0;left:0;right:0;background:#111318;box-shadow:0 5px 14px #0006}
     header{display:flex;align-items:center;gap:14px;padding:13px 18px;background:#191c23;border-bottom:1px solid #30343d}
     h1{font-size:18px;margin:0;white-space:nowrap}
+    .contacts{display:flex;align-items:center;gap:12px;margin-left:auto;white-space:nowrap}
+    .contacts a{display:inline-flex;align-items:center;gap:6px;color:#c6cad2;text-decoration:none;font-size:13px}
+    .contacts a:hover{color:#c4f26a;text-decoration:underline}
+    .contact-icon{display:inline-grid;place-items:center;width:20px;height:20px;border:1px solid #59606d;border-radius:50%;font-size:12px;font-weight:800}
     .search{display:flex;gap:8px;flex:1;max-width:800px;align-items:center}
     .search input{min-width:0;flex:1;padding:10px 12px;border:1px solid #454b57;border-radius:8px;background:#101217;color:inherit;font:inherit}
     .search button,.toolbar button{border:0;border-radius:8px;padding:9px 14px;background:#c4f26a;color:#19210e;font-weight:750;cursor:pointer}
@@ -108,11 +112,20 @@
     .grid{display:grid;gap:3px;min-height:0;background:#000}
     .slot{position:relative;min-width:0;min-height:0;background:#000;overflow:hidden}
     .slot iframe{width:100%;height:100%;border:0}
-    .slot-link{position:absolute;z-index:2;left:8px;top:8px;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border-radius:5px;background:#000b;color:#fff;font-size:12px;text-decoration:none}
+    .slot-link{position:absolute;z-index:2;left:8px;top:8px;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border-radius:5px;background:#000b;color:#fff;font-size:12px;text-decoration:none}
     .slot-link:hover{color:#c4f26a;text-decoration:underline}
+    .slot-actions{position:absolute;right:8px;top:8px;z-index:2;display:flex;gap:5px}
+    .slot-actions button{border:1px solid #555b66;border-radius:6px;padding:4px 8px;background:#262a32cc;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+    .slot-actions button:hover{background:#363c48;border-color:#c4f26a;color:#c4f26a}
     .focus{outline:3px solid #c4f26a;outline-offset:-3px}
+    @media(max-width:900px){
+      header{flex-wrap:wrap}
+      .search{max-width:none}
+      .contacts{margin-left:auto}
+    }
     @media(max-width:700px){
       header{align-items:stretch;flex-direction:column}
+      .contacts{margin-left:0;flex-wrap:wrap}
       .toolbar{gap:6px}
       .toolbar button{padding:8px}
       .results{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
@@ -126,12 +139,16 @@
 <body>
   <div class="sticky" id="sticky">
     <header>
-      <h1>YouTube Multi Player <small id="version">v1.0.3</small></h1>
+      <h1>YouTube Multi Player <small id="version">v1.0.4</small></h1>
       <form class="search" id="search">
         <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
         <button type="submit" id="search-button">検索</button>
         <button type="button" id="shorts-toggle" class="toggle-btn" aria-pressed="false"><span class="dot"></span>ショート</button>
       </form>
+      <nav class="contacts" aria-label="連絡先">
+        <a href="mailto:okcysk@gmail.com"><span class="contact-icon" aria-hidden="true">✉</span>okcysk@gmail.com</a>
+        <a href="https://x.com/okcysk46770" target="_blank" rel="noopener noreferrer"><span class="contact-icon" aria-hidden="true">𝕏</span>@okcysk46770</a>
+      </nav>
     </header>
     <div class="toolbar">
       <label for="count">同時再生数</label>
@@ -144,13 +161,14 @@
       <span id="selected-count">0 / 4 選択</span>
       <button class="secondary" id="clear">選択解除</button>
       <button id="open" disabled>選択した動画を再生</button>
+      <button id="open-auto" disabled>順に自動再生</button>
     </div>
     <p class="status" id="status" aria-live="polite">YouTube検索結果を読み込みます。</p>
   </div>
   <main class="results" id="results"></main>
   <section class="player" id="player-view">
     <div class="player-head">
-      <h2>YouTube Multi Player <small id="player-version">v1.0.3</small></h2>
+      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.4</small></h2>
       <span class="help">Tab / W A S D: focus · B / N: previous / next · Z / X: ±5s · C / V: ±30s · F / G / H: speed · M: mute · Space: play/stop · Shift+Space: all play/stop · Shift+M: mute all</span>
       <nav class="share">
         <button id="copy" disabled>リンクをコピー</button>
@@ -167,13 +185,22 @@
     const sticky=document.querySelector('#sticky'),shortsToggle=document.querySelector('#shorts-toggle');
     const fit=()=>document.body.style.setProperty('--sticky-height',`${sticky.offsetHeight}px`);fit();new ResizeObserver(fit).observe(sticky);window.addEventListener('resize',fit);
     let videos=[],active=0,ytReady=null,shareTimer=null,shortsOnly=false;
-    let selectionAnchorId=null,dragSelection=null,suppressClickAfterDrag=false;
+    let selectionAnchorId=null,dragSelection=null,suppressClickAfterDrag=false,autoNextIndex=0;
 
     const target=()=>Number(count.value),setStatus=(text,error=false)=>{status.textContent=text;status.classList.toggle('error',error)};
-    function updateSelection(){document.querySelector('#selected-count').textContent=`${chosen.size} / ${target()} 選択`;document.querySelector('#open').disabled=!chosen.size||chosen.size>target();}
+    function updateSelection(){
+      document.querySelector('#selected-count').textContent=`${chosen.size} / ${target()} 選択`;
+      document.querySelector('#open').disabled=!chosen.size||chosen.size>target();
+      document.querySelector('#open-auto').disabled=!videos.length;
+    }
     function syncCapacityToSelection(){count.value=String(chosen.size<=1?1:chosen.size<=4?4:chosen.size<=9?9:16);updateSelection();}
     count.addEventListener('change',updateSelection);
     function loadYT(){if(ytReady)return ytReady;ytReady=new Promise(resolve=>{if(window.YT?.Player){resolve();return}window.onYouTubeIframeAPIReady=resolve;const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.append(script)});return ytReady}
+
+    function nextAutoVideo(){
+      if(autoNextIndex>=videos.length)return null;
+      return videos[autoNextIndex++];
+    }
 
     function selectVideo(video,card,checkbox,checked){
       if(checked){
@@ -238,6 +265,7 @@
       videos=[];
       selectionAnchorId=null;
       dragSelection=null;
+      autoNextIndex=0;
       updateSelection();
       results.classList.toggle('shorts-mode',shortsOnly);
 
@@ -322,6 +350,7 @@
       }finally{
         document.querySelector('#search-button').disabled=false;
         shortsToggle.disabled=false;
+        updateSelection();
       }
     }
 
@@ -362,6 +391,21 @@
       if(event.target.closest('.thumb'))event.preventDefault();
     });
 
+    // ダブルクリックでその動画から順に自動再生
+    results.addEventListener('dblclick',event=>{
+      const card=event.target.closest('.card');
+      if(!card)return;
+      event.preventDefault();
+      const index=[...results.children].indexOf(card);
+      if(index<0||!videos[index])return;
+      autoNextIndex=index+1;
+      count.value='1';
+      updateSelection();
+      openPlayer([videos[index]],true).then(()=>{
+        setStatus(`「${videos[index].title}」から1画面で順に自動再生します。`);
+      });
+    });
+
     document.querySelector('#search').addEventListener('submit',event=>{event.preventDefault();search(document.querySelector('#query').value.trim())});
     function encodeState(state){const bytes=new TextEncoder().encode(JSON.stringify(state));let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
     function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
@@ -369,34 +413,132 @@
     function startTracking(){clearInterval(shareTimer);shareTimer=setInterval(updateURL,1000);updateURL()}
     async function share(action){updateURL();const url=location.href;const links={x:`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('YouTube Multi Player')}`,line:`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`,threads:`https://www.threads.net/intent/post?text=${encodeURIComponent('YouTube Multi Player '+url)}`};if(action==='copy'){try{await navigator.clipboard.writeText(url);const b=document.querySelector('#copy');b.textContent='コピーしました';setTimeout(()=>b.textContent='リンクをコピー',1300)}catch{prompt('リンクをコピーしてください',url)}}else window.open(links[action],'_blank','noopener,noreferrer')}
     function setShareEnabled(enabled){document.querySelectorAll('.share button').forEach(button=>button.disabled=!enabled)}
-    async function openPlayer(items,state=null){
-      if(!items.length||items.length>target())return;
+
+    function loadVideoIntoSlot(entry,nextVideo){
+      if(!nextVideo)return;
+      entry.video=nextVideo;
+      entry.link.href=nextVideo.url||`https://www.youtube.com/watch?v=${nextVideo.id}`;
+      entry.link.textContent=nextVideo.title||nextVideo.id;
+      if(entry.yt?.loadVideoById){
+        entry.yt.loadVideoById(nextVideo.id);
+        entry.yt.playVideo();
+      }
+    }
+
+    function advanceSlot(slot){
+      const nextVideo=nextAutoVideo();
+      if(!nextVideo){
+        setStatus('検索結果の動画をすべて再生しました。');
+        return;
+      }
+      slot.history.push(nextVideo);
+      loadVideoIntoSlot(slot,nextVideo);
+      setStatus(`「${nextVideo.title}」を再生中`);
+    }
+
+    function nextSlot(slot){
+      if(slot.autoMode){
+        advanceSlot(slot);
+        return;
+      }
+      const nextIndex=(slot.index+1)%slot.playlist.length;
+      slot.index=nextIndex;
+      loadVideoIntoSlot(slot,slot.playlist[nextIndex]);
+    }
+
+    function previousSlot(slot){
+      if(slot.autoMode){
+        if(slot.history.length<2){
+          setStatus('このスロットの最初の動画です。');
+          return;
+        }
+        slot.history.pop();
+        const prevVideo=slot.history.at(-1);
+        loadVideoIntoSlot(slot,prevVideo);
+        setStatus(`「${prevVideo.title}」に戻りました`);
+        return;
+      }
+      const prevIndex=(slot.index-1+slot.playlist.length)%slot.playlist.length;
+      slot.index=prevIndex;
+      loadVideoIntoSlot(slot,slot.playlist[prevIndex]);
+    }
+
+    async function openPlayer(items,auto=false,state=null){
+      if(!items.length||(!auto&&items.length>target()))return;
       await loadYT();
       const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;
       document.querySelector('#player-view').classList.add('open');setShareEnabled(false);
+      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.4${auto?' · Auto':''}</small>`;
+      if(auto&&items.length>1)autoNextIndex=items.length;
       const side=Math.ceil(Math.sqrt(target()));
       items.forEach((item,index)=>{
         const saved=state?.s?.find(x=>x.i===(Number.isInteger(item.slotIndex)?item.slotIndex:index));
         const cell=document.createElement('div');cell.className='slot';cell.tabIndex=-1;
         const link=document.createElement('a');link.className='slot-link';link.href=item.url||`https://www.youtube.com/watch?v=${item.id}`;link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.title||item.id;
+        
+        const actions=document.createElement('span');actions.className='slot-actions';
+        const backBtn=document.createElement('button');backBtn.type='button';backBtn.textContent='Back';
+        const nextBtn=document.createElement('button');nextBtn.type='button';nextBtn.textContent='Next';
+        actions.append(backBtn,nextBtn);
+
         const frame=document.createElement('iframe');frame.id=`yt-player-${Date.now()}-${index}`;frame.title=item.title||'YouTube video';frame.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';frame.allowFullscreen=true;
         const embed=new URL(`https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.id)}`);embed.searchParams.set('autoplay','1');embed.searchParams.set('controls','1');embed.searchParams.set('enablejsapi','1');embed.searchParams.set('playsinline','1');embed.searchParams.set('rel','0');embed.searchParams.set('mute','1');if(location.origin!=='null')embed.searchParams.set('origin',location.origin);if(saved?.p>0)embed.searchParams.set('start',String(Math.floor(saved.p)));frame.src=embed.href;
-        cell.append(link,frame);grid.append(cell);
-        const entry={cell,link,video:item,yt:null,index,slotIndex:Number.isInteger(item.slotIndex)?item.slotIndex:index,playlist:items,restore:saved};
+        cell.append(link,actions,frame);grid.append(cell);
+        const entry={cell,link,video:item,yt:null,index,slotIndex:Number.isInteger(item.slotIndex)?item.slotIndex:index,playlist:items,restore:saved,autoMode:auto,history:[item]};
+        
+        backBtn.addEventListener('click',()=>previousSlot(entry));
+        nextBtn.addEventListener('click',()=>nextSlot(entry));
+
         cell.style.gridColumn=String(entry.slotIndex%side+1);cell.style.gridRow=String(Math.floor(entry.slotIndex/side)+1);slots.push(entry);
-        new YT.Player(frame.id,{events:{onReady:event=>{entry.yt=event.target;entry.yt.setVolume(entry.restore?.v??100);entry.yt.mute();if(entry.restore){if(entry.restore.p>0)entry.yt.seekTo(entry.restore.p,true);if(entry.restore.r)entry.yt.setPlaybackRate(entry.restore.r);if(entry.restore.m===false)entry.yt.unMute()}entry.yt.playVideo();if(slots.every(x=>x.yt)){setShareEnabled(true);startTracking()}},onError:event=>{setStatus(`YouTube player error ${event.data} for ${item.id}`,true)},onAutoplayBlocked:()=>setStatus('YouTube blocked autoplay. Press the play button in each video.',true)}});
+        new YT.Player(frame.id,{events:{
+          onReady:event=>{
+            entry.yt=event.target;entry.yt.setVolume(entry.restore?.v??100);entry.yt.mute();
+            if(entry.restore){if(entry.restore.p>0)entry.yt.seekTo(entry.restore.p,true);if(entry.restore.r)entry.yt.setPlaybackRate(entry.restore.r);if(entry.restore.m===false)entry.yt.unMute()}
+            entry.yt.playVideo();
+            if(slots.every(x=>x.yt)){setShareEnabled(true);startTracking()}
+          },
+          onStateChange:event=>{
+            if(event.data===YT.PlayerState.ENDED&&entry.autoMode){
+              advanceSlot(entry);
+            }
+          },
+          onError:event=>{
+            setStatus(`YouTube player error ${event.data} for ${item.id}`,true);
+            if(entry.autoMode)setTimeout(()=>advanceSlot(entry),1200);
+          },
+          onAutoplayBlocked:()=>setStatus('YouTube blocked autoplay. Press the play button in each video.',true)
+        }});
       });
       const n=Math.max(slots.length,target()),sideCount=Math.ceil(Math.sqrt(n));grid.style.gridTemplateColumns=`repeat(${sideCount},minmax(0,1fr))`;grid.style.gridTemplateRows=`repeat(${sideCount},minmax(0,1fr))`;focus(0)
     }
     function focus(index){if(!slots.length)return;active=(index+slots.length)%slots.length;slots.forEach((slot,i)=>slot.cell.classList.toggle('focus',i===active));slots[active].cell.focus({preventScroll:true})}
-    function applyKey(event){if(!document.querySelector('#player-view').classList.contains('open'))return;if(event.altKey||event.ctrlKey||event.metaKey)return;const key=event.key.toLowerCase();if(event.shiftKey&&(key===' '||key==='m')){event.preventDefault();for(const s of slots){if(!s.yt)continue;if(key==='m'){const mute=slots.some(x=>x.yt&&!x.yt.isMuted());slots.forEach(x=>mute?x.yt?.mute():x.yt?.unMute())}else{const play=slots.some(x=>x.yt&&x.yt.getPlayerState()!==YT.PlayerState.PLAYING);slots.forEach(x=>play?x.yt?.playVideo():x.yt?.pauseVideo())}}return}if(key==='escape'){closePlayer();return}if(key==='tab'||['w','a','s','d'].includes(key)){event.preventDefault();focus(key==='tab'?(active+(event.shiftKey?-1:1)):key==='a'?active-1:key==='d'?active+1:key==='w'?active-Math.ceil(Math.sqrt(target())):active+Math.ceil(Math.sqrt(target())));return}const s=slots[active];if(!s?.yt)return;const p=s.yt,now=p.getCurrentTime()||0,dur=p.getDuration()||Infinity;if(key===' '){event.preventDefault();p.getPlayerState()===YT.PlayerState.PLAYING?p.pauseVideo():p.playVideo()}else if(key==='m')p.isMuted()?p.unMute():p.mute();else if(key==='arrowup'||key==='arrowdown')p.setVolume(Math.max(0,Math.min(100,p.getVolume()+(key==='arrowup'?10:-10))));else if(key==='z'||key==='x'||key==='c'||key==='v')p.seekTo(Math.max(0,Math.min(dur,now+({z:-5,x:5,c:-30,v:30})[key])),true);else if(key==='f')p.setPlaybackRate(1);else if(key==='g')p.setPlaybackRate(p.getPlaybackRate()===2?1:2);else if(key==='h')p.setPlaybackRate(p.getPlaybackRate()===1?2:1);else if(key==='b'||key==='n'){const next=(s.index+(key==='n'?1:-1)+s.playlist.length)%s.playlist.length;s.index=next;s.video=s.playlist[next];s.link.href=s.video.url;s.link.textContent=s.video.title;p.loadVideoById(s.video.id)}}
-    window.addEventListener('keydown',applyKey,true);document.querySelector('#open').addEventListener('click',()=>openPlayer([...chosen.values()]));document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();selectionAnchorId=null;dragSelection=null;count.value='4';results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});document.querySelector('#close').addEventListener('click',closePlayer);function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>x.yt?.destroy());slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
+    function applyKey(event){if(!document.querySelector('#player-view').classList.contains('open'))return;if(event.altKey||event.ctrlKey||event.metaKey)return;const key=event.key.toLowerCase();if(event.shiftKey&&(key===' '||key==='m')){event.preventDefault();for(const s of slots){if(!s.yt)continue;if(key==='m'){const mute=slots.some(x=>x.yt&&!x.yt.isMuted());slots.forEach(x=>mute?x.yt?.mute():x.yt?.unMute())}else{const play=slots.some(x=>x.yt&&x.yt.getPlayerState()!==YT.PlayerState.PLAYING);slots.forEach(x=>play?x.yt?.playVideo():x.yt?.pauseVideo())}}return}if(key==='escape'){closePlayer();return}if(key==='tab'||['w','a','s','d'].includes(key)){event.preventDefault();focus(key==='tab'?(active+(event.shiftKey?-1:1)):key==='a'?active-1:key==='d'?active+1:key==='w'?active-Math.ceil(Math.sqrt(target())):active+Math.ceil(Math.sqrt(target())));return}const s=slots[active];if(!s?.yt)return;const p=s.yt,now=p.getCurrentTime()||0,dur=p.getDuration()||Infinity;if(key===' '){event.preventDefault();p.getPlayerState()===YT.PlayerState.PLAYING?p.pauseVideo():p.playVideo()}else if(key==='m')p.isMuted()?p.unMute():p.mute();else if(key==='arrowup'||key==='arrowdown')p.setVolume(Math.max(0,Math.min(100,p.getVolume()+(key==='arrowup'?10:-10))));else if(key==='z'||key==='x'||key==='c'||key==='v')p.seekTo(Math.max(0,Math.min(dur,now+({z:-5,x:5,c:-30,v:30})[key])),true);else if(key==='f')p.setPlaybackRate(1);else if(key==='g')p.setPlaybackRate(p.getPlaybackRate()===2?1:2);else if(key==='h')p.setPlaybackRate(p.getPlaybackRate()===1?2:1);else if(key==='b'){previousSlot(s)}else if(key==='n'){nextSlot(s)}}
+    window.addEventListener('keydown',applyKey,true);
+    document.querySelector('#open').addEventListener('click',()=>openPlayer([...chosen.values()],false));
+    document.querySelector('#open-auto').addEventListener('click',async()=>{
+      if(!videos.length)return;
+      autoNextIndex=0;
+      const countTarget=target();
+      const initial=[];
+      while(initial.length<countTarget&&autoNextIndex<videos.length){
+        const v=nextAutoVideo();
+        if(!v)break;
+        initial.push(v);
+      }
+      if(!initial.length)return;
+      openPlayer(initial,true).then(()=>{
+        setStatus('順に自動再生中です。動画終了時またはNextで次の動画へ進みます。');
+      });
+    });
+    document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();selectionAnchorId=null;dragSelection=null;count.value='4';results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});
+    document.querySelector('#close').addEventListener('click',closePlayer);
+    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>x.yt?.destroy());slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
     document.querySelector('#copy').addEventListener('click',()=>share('copy'));document.querySelector('#share-x').addEventListener('click',()=>share('x'));document.querySelector('#share-line').addEventListener('click',()=>share('line'));document.querySelector('#share-threads').addEventListener('click',()=>share('threads'));
     const sharedParam=new URLSearchParams(location.hash.slice(1)).get('share'),shared=sharedParam&&decodeState(sharedParam);
     if(shared){
       count.value=String(shared.n);
       const items=shared.s.map(x=>({id:x.id,title:x.title||`YouTube ${x.id}`,url:`https://www.youtube.com/watch?v=${x.id}`,slotIndex:x.i}));
-      if(items.length)openPlayer(items,shared);else{setStatus('共有リンクに有効な動画IDがありません。リンクを作り直してください。',true);search('')}
+      if(items.length)openPlayer(items,false,shared);else{setStatus('共有リンクに有効な動画IDがありません。リンクを作り直してください。',true);search('')}
     }else{
       search('');
       if(sharedParam)setStatus('共有リンクを読み取れませんでした。URLが途中で切れていないか確認してください。',true);
