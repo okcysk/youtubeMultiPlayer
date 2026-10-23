@@ -7,25 +7,230 @@
   <title>YouTube Multi Player</title>
   <script src="./config.js"></script>
   <style>
-    :root{font-family:system-ui,"Segoe UI",sans-serif;color:#eff1f5;background:#111318;color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding-top:var(--sticky-height,0)}.sticky{position:fixed;z-index:5;top:0;left:0;right:0;background:#111318;box-shadow:0 5px 14px #0006}header{display:flex;align-items:center;gap:14px;padding:13px 18px;background:#191c23;border-bottom:1px solid #30343d}h1{font-size:18px;margin:0;white-space:nowrap}.search{display:flex;gap:8px;flex:1;max-width:800px}.search input{min-width:0;flex:1;padding:10px 12px;border:1px solid #454b57;border-radius:8px;background:#101217;color:inherit;font:inherit}.search button,.toolbar button{border:0;border-radius:8px;padding:9px 14px;background:#c4f26a;color:#19210e;font-weight:750;cursor:pointer}.toolbar{display:flex;align-items:center;gap:9px;max-width:1500px;margin:8px auto 4px;padding:0 16px;flex-wrap:wrap}.toolbar label,.toolbar span{color:#c6cad2}.toolbar select{padding:8px;border:1px solid #454b57;border-radius:7px;background:#20232a;color:#fff}.toolbar .secondary{background:#30343d;color:#fff}.toolbar button:disabled,.search button:disabled{opacity:.45;cursor:wait}.status{max-width:1500px;margin:0 auto;padding:0 16px 10px;color:#aeb4c0;font-size:13px}.status.error{color:#ffaaa6}.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;max-width:1500px;margin:auto;padding:12px 16px 24px}.card{overflow:hidden;border:1px solid #323741;border-radius:9px;background:#1b1e25}.card.selected{outline:2px solid #c4f26a}.thumb{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#08090b}.card label{display:flex;gap:9px;align-items:flex-start;padding:9px;cursor:pointer}.card input{width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#c4f26a}.title{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;line-height:1.4}.player{position:fixed;inset:0;z-index:10;display:none;background:#07080a}.player.open{display:grid;grid-template-rows:auto 1fr}.player-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 13px;background:#171a20}.player-head h2{margin:0;font-size:15px}.help{flex:1;color:#aeb4c0;font-size:11px}.share{display:flex;gap:5px}.share button,.close{border:1px solid #555b66;border-radius:7px;padding:7px 9px;background:#262a32;color:#fff;cursor:pointer}.share button:disabled{opacity:.45;cursor:wait}.grid{display:grid;gap:3px;min-height:0;background:#000}.slot{position:relative;min-width:0;min-height:0;background:#000;overflow:hidden}.slot iframe{width:100%;height:100%;border:0}.slot-link{position:absolute;z-index:2;left:8px;top:8px;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border-radius:5px;background:#000b;color:#fff;font-size:12px;text-decoration:none}.slot-link:hover{color:#c4f26a;text-decoration:underline}.focus{outline:3px solid #c4f26a;outline-offset:-3px}@media(max-width:700px){header{align-items:stretch;flex-direction:column}.toolbar{gap:6px}.toolbar button{padding:8px}.results{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}.help{display:none}.player-head{justify-content:flex-start}.share{order:3;width:100%;justify-content:flex-end}}
+    :root{font-family:system-ui,"Segoe UI",sans-serif;color:#eff1f5;background:#111318;color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;padding-top:var(--sticky-height,0)}
+    .sticky{position:fixed;z-index:5;top:0;left:0;right:0;background:#111318;box-shadow:0 5px 14px #0006}
+    header{display:flex;align-items:center;gap:14px;padding:13px 18px;background:#191c23;border-bottom:1px solid #30343d}
+    h1{font-size:18px;margin:0;white-space:nowrap}
+    .search{display:flex;gap:8px;flex:1;max-width:800px;align-items:center}
+    .search input{min-width:0;flex:1;padding:10px 12px;border:1px solid #454b57;border-radius:8px;background:#101217;color:inherit;font:inherit}
+    .search button,.toolbar button{border:0;border-radius:8px;padding:9px 14px;background:#c4f26a;color:#19210e;font-weight:750;cursor:pointer}
+    .toggle-btn{
+      border:1px solid #454b57 !important;
+      border-radius:8px;
+      padding:9px 13px !important;
+      background:#20232a !important;
+      color:#c6cad2 !important;
+      font-weight:700 !important;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      white-space:nowrap;
+      user-select:none;
+      transition:all .15s ease;
+    }
+    .toggle-btn:hover{
+      border-color:#ff334b !important;
+      color:#fff !important;
+    }
+    .toggle-btn.active{
+      border-color:#ff0033 !important;
+      background:#ff0033 !important;
+      color:#fff !important;
+      box-shadow:0 0 10px rgba(255,0,51,.4);
+    }
+    .toggle-btn .dot{
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:#656c7a;
+      display:inline-block;
+      transition:background .15s ease;
+    }
+    .toggle-btn.active .dot{
+      background:#fff;
+    }
+    .toggle-btn:disabled{opacity:.45;cursor:wait}
+    .toolbar{display:flex;align-items:center;gap:9px;max-width:1500px;margin:8px auto 4px;padding:0 16px;flex-wrap:wrap}
+    .toolbar label,.toolbar span{color:#c6cad2}
+    .toolbar select{padding:8px;border:1px solid #454b57;border-radius:7px;background:#20232a;color:#fff}
+    .toolbar .secondary{background:#30343d;color:#fff}
+    .toolbar button:disabled,.search button:disabled{opacity:.45;cursor:wait}
+    .status{max-width:1500px;margin:0 auto;padding:0 16px 10px;color:#aeb4c0;font-size:13px}
+    .status.error{color:#ffaaa6}
+    .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;max-width:1500px;margin:auto;padding:12px 16px 24px}
+    .results.shorts-mode{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+    .card{overflow:hidden;border:1px solid #323741;border-radius:9px;background:#1b1e25}
+    .card.selected{outline:2px solid #c4f26a}
+    .thumb-wrap{position:relative}
+    .thumb{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#08090b;cursor:pointer}
+    .results.shorts-mode .thumb{aspect-ratio:9/16}
+    .badge-shorts{
+      position:absolute;
+      bottom:6px;
+      right:6px;
+      padding:2px 6px;
+      border-radius:4px;
+      background:#ff0033;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      line-height:1.2;
+      pointer-events:none;
+      box-shadow:0 1px 4px rgba(0,0,0,.7);
+    }
+    .card label{display:flex;gap:9px;align-items:flex-start;padding:9px;cursor:pointer}
+    .card input{width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#c4f26a}
+    .title{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;line-height:1.4}
+    .player{position:fixed;inset:0;z-index:10;display:none;background:#07080a}
+    .player.open{display:grid;grid-template-rows:auto 1fr}
+    .player-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 13px;background:#171a20}
+    .player-head h2{margin:0;font-size:15px}
+    .help{flex:1;color:#aeb4c0;font-size:11px}
+    .share{display:flex;gap:5px}
+    .share button,.close{border:1px solid #555b66;border-radius:7px;padding:7px 9px;background:#262a32;color:#fff;cursor:pointer}
+    .share button:disabled{opacity:.45;cursor:wait}
+    .grid{display:grid;gap:3px;min-height:0;background:#000}
+    .slot{position:relative;min-width:0;min-height:0;background:#000;overflow:hidden}
+    .slot iframe{width:100%;height:100%;border:0}
+    .slot-link{position:absolute;z-index:2;left:8px;top:8px;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 7px;border-radius:5px;background:#000b;color:#fff;font-size:12px;text-decoration:none}
+    .slot-link:hover{color:#c4f26a;text-decoration:underline}
+    .focus{outline:3px solid #c4f26a;outline-offset:-3px}
+    @media(max-width:700px){
+      header{align-items:stretch;flex-direction:column}
+      .toolbar{gap:6px}
+      .toolbar button{padding:8px}
+      .results{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+      .results.shorts-mode{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .help{display:none}
+      .player-head{justify-content:flex-start}
+      .share{order:3;width:100%;justify-content:flex-end}
+    }
   </style>
 </head>
 <body>
-  <div class="sticky" id="sticky"><header><h1>YouTube Multi Player <small id="version">v1.0.1</small></h1><form class="search" id="search"><input id="query" placeholder="YouTube検索" aria-label="YouTube検索"><button id="search-button">検索</button></form></header>
-    <div class="toolbar"><label for="count">同時再生数</label><select id="count"><option value="1">1画面</option><option value="4" selected>4画面</option><option value="9">9画面</option><option value="16">16画面</option></select><span id="selected-count">0 / 4 選択</span><button class="secondary" id="clear">選択解除</button><button id="open" disabled>選択した動画を再生</button></div>
+  <div class="sticky" id="sticky">
+    <header>
+      <h1>YouTube Multi Player <small id="version">v1.0.2</small></h1>
+      <form class="search" id="search">
+        <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
+        <button type="submit" id="search-button">検索</button>
+        <button type="button" id="shorts-toggle" class="toggle-btn" aria-pressed="false"><span class="dot"></span>ショート</button>
+      </form>
+    </header>
+    <div class="toolbar">
+      <label for="count">同時再生数</label>
+      <select id="count">
+        <option value="1">1画面</option>
+        <option value="4" selected>4画面</option>
+        <option value="9">9画面</option>
+        <option value="16">16画面</option>
+      </select>
+      <span id="selected-count">0 / 4 選択</span>
+      <button class="secondary" id="clear">選択解除</button>
+      <button id="open" disabled>選択した動画を再生</button>
+    </div>
     <p class="status" id="status" aria-live="polite">YouTube検索結果を読み込みます。</p>
   </div>
   <main class="results" id="results"></main>
-  <section class="player" id="player-view"><div class="player-head"><h2>YouTube Multi Player <small id="player-version">v1.0.1</small></h2><span class="help">Tab / W A S D: focus · B / N: previous / next · Z / X: ±5s · C / V: ±30s · F / G / H: speed · M: mute · Space: play/stop · Shift+Space: all play/stop · Shift+M: mute all</span><nav class="share"><button id="copy" disabled>リンクをコピー</button><button id="share-x" disabled>X</button><button id="share-line" disabled>LINE</button><button id="share-threads" disabled>Threads</button></nav><button class="close" id="close">一覧に戻る</button></div><div class="grid" id="grid"></div></section>
+  <section class="player" id="player-view">
+    <div class="player-head">
+      <h2>YouTube Multi Player <small id="player-version">v1.0.2</small></h2>
+      <span class="help">Tab / W A S D: focus · B / N: previous / next · Z / X: ±5s · C / V: ±30s · F / G / H: speed · M: mute · Space: play/stop · Shift+Space: all play/stop · Shift+M: mute all</span>
+      <nav class="share">
+        <button id="copy" disabled>リンクをコピー</button>
+        <button id="share-x" disabled>X</button>
+        <button id="share-line" disabled>LINE</button>
+        <button id="share-threads" disabled>Threads</button>
+      </nav>
+      <button class="close" id="close">一覧に戻る</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
   <script>
     const api=(window.YOUTUBE_API_BASE||'').replace(/\/$/,''),results=document.querySelector('#results'),status=document.querySelector('#status'),count=document.querySelector('#count'),chosen=new Map(),slots=[];
-    const sticky=document.querySelector('#sticky'),fit=()=>document.body.style.setProperty('--sticky-height',`${sticky.offsetHeight}px`);fit();new ResizeObserver(fit).observe(sticky);window.addEventListener('resize',fit);
-    let videos=[],active=0,ytReady=null,shareTimer=null;
+    const sticky=document.querySelector('#sticky'),shortsToggle=document.querySelector('#shorts-toggle');
+    const fit=()=>document.body.style.setProperty('--sticky-height',`${sticky.offsetHeight}px`);fit();new ResizeObserver(fit).observe(sticky);window.addEventListener('resize',fit);
+    let videos=[],active=0,ytReady=null,shareTimer=null,shortsOnly=false;
     const target=()=>Number(count.value),setStatus=(text,error=false)=>{status.textContent=text;status.classList.toggle('error',error)};
     function updateSelection(){document.querySelector('#selected-count').textContent=`${chosen.size} / ${target()} 選択`;document.querySelector('#open').disabled=!chosen.size||chosen.size>target();}
     count.addEventListener('change',updateSelection);
     function loadYT(){if(ytReady)return ytReady;ytReady=new Promise(resolve=>{if(window.YT?.Player){resolve();return}window.onYouTubeIframeAPIReady=resolve;const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.append(script)});return ytReady}
-    async function search(q=''){if(!api){setStatus('config.js にCloudflare WorkerのURLを設定してください。',true);return}document.querySelector('#search-button').disabled=true;setStatus('YouTube検索結果を取得中…');results.replaceChildren();chosen.clear();videos=[];updateSelection();try{const response=await fetch(`${api}/search?q=${encodeURIComponent(q||'popular')}`),data=await response.json();if(!response.ok)throw Error(data.error||'検索に失敗しました。');videos=data.videos||[];for(const video of videos){const card=document.createElement('article');card.className='card';card.innerHTML=`<img class="thumb" loading="lazy" src="${video.thumbnail}" alt=""><label><input type="checkbox"><span class="title"></span></label>`;card.querySelector('.title').textContent=video.title;const checkbox=card.querySelector('input');checkbox.addEventListener('change',()=>{if(checkbox.checked){if(chosen.size>=16){checkbox.checked=false;setStatus('一度に選べる動画は16本までです。',true);return}chosen.set(video.id,video);card.classList.add('selected')}else{chosen.delete(video.id);card.classList.remove('selected')}count.value=String(chosen.size<=1?1:chosen.size<=4?4:chosen.size<=9?9:16);updateSelection()});card.querySelector('.thumb').addEventListener('click',()=>{checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event('change'))});results.append(card)}setStatus(`${videos.length} 件を表示中。`)}catch(error){setStatus(error.message,true)}finally{document.querySelector('#search-button').disabled=false}}
+
+    shortsToggle.addEventListener('click',()=>{
+      shortsOnly=!shortsOnly;
+      shortsToggle.classList.toggle('active',shortsOnly);
+      shortsToggle.setAttribute('aria-pressed',String(shortsOnly));
+      search(document.querySelector('#query').value.trim());
+    });
+
+    async function search(q=''){
+      if(!api){setStatus('config.js にCloudflare WorkerのURLを設定してください。',true);return}
+      document.querySelector('#search-button').disabled=true;
+      shortsToggle.disabled=true;
+      setStatus(shortsOnly?'YouTubeショート動画を取得中…':'YouTube検索結果を取得中…');
+      results.replaceChildren();
+      chosen.clear();
+      videos=[];
+      updateSelection();
+      results.classList.toggle('shorts-mode',shortsOnly);
+
+      let searchWord=q;
+      if(shortsOnly && searchWord && !searchWord.includes('#shorts') && !searchWord.toLowerCase().includes('shorts')){
+        searchWord=`${searchWord} #shorts`;
+      }
+
+      const endpoint=new URL(`${api}/search`);
+      endpoint.searchParams.set('q',searchWord||(shortsOnly?'#shorts':'popular'));
+      if(shortsOnly){
+        endpoint.searchParams.set('shorts','1');
+      }
+
+      try{
+        const response=await fetch(endpoint.href);
+        const data=await response.json();
+        if(!response.ok)throw Error(data.error||'検索に失敗しました。');
+        videos=data.videos||[];
+        for(const video of videos){
+          const card=document.createElement('article');
+          card.className='card';
+          const isShort=shortsOnly||video.isShort;
+          card.innerHTML=`<div class="thumb-wrap"><img class="thumb" loading="lazy" src="${video.thumbnail}" alt="">${isShort?'<span class="badge-shorts">Shorts</span>':''}</div><label><input type="checkbox"><span class="title"></span></label>`;
+          card.querySelector('.title').textContent=video.title;
+          const checkbox=card.querySelector('input');
+          checkbox.addEventListener('change',()=>{
+            if(checkbox.checked){
+              if(chosen.size>=16){
+                checkbox.checked=false;
+                setStatus('一度に選べる動画は16本までです。',true);
+                return;
+              }
+              chosen.set(video.id,video);
+              card.classList.add('selected');
+            }else{
+              chosen.delete(video.id);
+              card.classList.remove('selected');
+            }
+            count.value=String(chosen.size<=1?1:chosen.size<=4?4:chosen.size<=9?9:16);
+            updateSelection();
+          });
+          card.querySelector('.thumb').addEventListener('click',()=>{
+            checkbox.checked=!checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+          });
+          results.append(card);
+        }
+        setStatus(`${videos.length} 件${shortsOnly?'のショート動画':''}を表示中。`);
+      }catch(error){
+        setStatus(error.message,true);
+      }finally{
+        document.querySelector('#search-button').disabled=false;
+        shortsToggle.disabled=false;
+      }
+    }
+
     document.querySelector('#search').addEventListener('submit',event=>{event.preventDefault();search(document.querySelector('#query').value.trim())});
     function encodeState(state){const bytes=new TextEncoder().encode(JSON.stringify(state));let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
     function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
@@ -54,7 +259,7 @@
     }
     function focus(index){if(!slots.length)return;active=(index+slots.length)%slots.length;slots.forEach((slot,i)=>slot.cell.classList.toggle('focus',i===active));slots[active].cell.focus({preventScroll:true})}
     function applyKey(event){if(!document.querySelector('#player-view').classList.contains('open'))return;if(event.altKey||event.ctrlKey||event.metaKey)return;const key=event.key.toLowerCase();if(event.shiftKey&&(key===' '||key==='m')){event.preventDefault();for(const s of slots){if(!s.yt)continue;if(key==='m'){const mute=slots.some(x=>x.yt&&!x.yt.isMuted());slots.forEach(x=>mute?x.yt?.mute():x.yt?.unMute())}else{const play=slots.some(x=>x.yt&&x.yt.getPlayerState()!==YT.PlayerState.PLAYING);slots.forEach(x=>play?x.yt?.playVideo():x.yt?.pauseVideo())}}return}if(key==='escape'){closePlayer();return}if(key==='tab'||['w','a','s','d'].includes(key)){event.preventDefault();focus(key==='tab'?(active+(event.shiftKey?-1:1)):key==='a'?active-1:key==='d'?active+1:key==='w'?active-Math.ceil(Math.sqrt(target())):active+Math.ceil(Math.sqrt(target())));return}const s=slots[active];if(!s?.yt)return;const p=s.yt,now=p.getCurrentTime()||0,dur=p.getDuration()||Infinity;if(key===' '){event.preventDefault();p.getPlayerState()===YT.PlayerState.PLAYING?p.pauseVideo():p.playVideo()}else if(key==='m')p.isMuted()?p.unMute():p.mute();else if(key==='arrowup'||key==='arrowdown')p.setVolume(Math.max(0,Math.min(100,p.getVolume()+(key==='arrowup'?10:-10))));else if(key==='z'||key==='x'||key==='c'||key==='v')p.seekTo(Math.max(0,Math.min(dur,now+({z:-5,x:5,c:-30,v:30})[key])),true);else if(key==='f')p.setPlaybackRate(1);else if(key==='g')p.setPlaybackRate(p.getPlaybackRate()===2?1:2);else if(key==='h')p.setPlaybackRate(p.getPlaybackRate()===1?2:1);else if(key==='b'||key==='n'){const next=(s.index+(key==='n'?1:-1)+s.playlist.length)%s.playlist.length;s.index=next;s.video=s.playlist[next];s.link.href=s.video.url;s.link.textContent=s.video.title;p.loadVideoById(s.video.id)}}
-    window.addEventListener('keydown',applyKey,true);document.querySelector('#open').addEventListener('click',()=>openPlayer([...chosen.values()]));document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});document.querySelector('#close').addEventListener('click',closePlayer);function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>x.yt?.destroy());slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search('')}
+    window.addEventListener('keydown',applyKey,true);document.querySelector('#open').addEventListener('click',()=>openPlayer([...chosen.values()]));document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});document.querySelector('#close').addEventListener('click',closePlayer);function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>x.yt?.destroy());slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
     document.querySelector('#copy').addEventListener('click',()=>share('copy'));document.querySelector('#share-x').addEventListener('click',()=>share('x'));document.querySelector('#share-line').addEventListener('click',()=>share('line'));document.querySelector('#share-threads').addEventListener('click',()=>share('threads'));
     const sharedParam=new URLSearchParams(location.hash.slice(1)).get('share'),shared=sharedParam&&decodeState(sharedParam);
     if(shared){
