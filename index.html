@@ -189,7 +189,7 @@
 <body>
   <div class="sticky" id="sticky">
     <header>
-      <h1>YouTube Multi Player <small id="version">v1.0.6</small></h1>
+      <h1>YouTube Multi Player <small id="version">v1.0.7</small></h1>
       <form class="search" id="search">
         <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
         <button type="submit" id="search-button">検索</button>
@@ -204,6 +204,7 @@
       <label for="count">同時再生数</label>
       <select id="count">
         <option value="1">1画面</option>
+        <option value="2">2画面</option>
         <option value="4" selected>4画面</option>
         <option value="9">9画面</option>
         <option value="16">16画面</option>
@@ -218,7 +219,7 @@
   <main class="results" id="results"></main>
   <section class="player" id="player-view">
     <div class="player-head">
-      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.6</small></h2>
+      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.7</small></h2>
       <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
       <nav class="share">
         <button id="copy" disabled>リンクをコピー</button>
@@ -243,7 +244,7 @@
       document.querySelector('#open').disabled=!chosen.size||chosen.size>target();
       document.querySelector('#open-auto').disabled=!videos.length;
     }
-    function syncCapacityToSelection(){count.value=String(chosen.size<=1?1:chosen.size<=4?4:chosen.size<=9?9:16);updateSelection();}
+    function syncCapacityToSelection(){count.value=String(chosen.size<=1?1:chosen.size<=2?2:chosen.size<=4?4:chosen.size<=9?9:16);updateSelection();}
     count.addEventListener('change',updateSelection);
     function loadYT(){if(ytReady)return ytReady;ytReady=new Promise(resolve=>{if(window.YT?.Player){resolve();return}window.onYouTubeIframeAPIReady=resolve;const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.append(script)});return ytReady}
 
@@ -458,7 +459,7 @@
 
     document.querySelector('#search').addEventListener('submit',event=>{event.preventDefault();search(document.querySelector('#query').value.trim())});
     function encodeState(state){const bytes=new TextEncoder().encode(JSON.stringify(state));let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-    function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
+    function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,2,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
     function updateURL(){if(!document.querySelector('#player-view').classList.contains('open'))return;const s=slots.map(slot=>{if(!slot?.yt)return null;return{i:slot.slotIndex,id:slot.video.id,title:slot.video.title,p:slot.yt.getCurrentTime?.()||0,r:slot.currentRate||slot.yt.getPlaybackRate?.()||1,m:slot.yt.isMuted?.()||false,v:slot.yt.getVolume?.()??100}});const url=new URL(location.href);url.hash=`share=${encodeState({v:1,n:target(),s})}`;history.replaceState(null,'',url)}
     function startTracking(){clearInterval(shareTimer);shareTimer=setInterval(updateURL,1000);updateURL()}
     async function share(action){updateURL();const url=location.href;const links={x:`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('YouTube Multi Player')}`,line:`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`,threads:`https://www.threads.net/intent/post?text=${encodeURIComponent('YouTube Multi Player '+url)}`};if(action==='copy'){try{await navigator.clipboard.writeText(url);const b=document.querySelector('#copy');b.textContent='コピーしました';setTimeout(()=>b.textContent='リンクをコピー',1300)}catch{prompt('リンクをコピーしてください',url)}}else window.open(links[action],'_blank','noopener,noreferrer')}
@@ -529,9 +530,13 @@
       await loadYT();
       const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;
       document.querySelector('#player-view').classList.add('open');setShareEnabled(false);
-      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.6${auto?' · Auto':''}</small>`;
+      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.7${auto?' · Auto':''}</small>`;
       if(auto&&items.length>1)autoNextIndex=items.length;
-      const side=Math.ceil(Math.sqrt(target()));
+      
+      const targetCount=target();
+      const cols=targetCount===2?2:Math.ceil(Math.sqrt(targetCount));
+      const rows=targetCount===2?1:Math.ceil(Math.sqrt(targetCount));
+
       items.forEach((item,index)=>{
         const saved=state?.s?.find(x=>x.i===(Number.isInteger(item.slotIndex)?item.slotIndex:index));
         const cell=document.createElement('div');cell.className='slot';cell.tabIndex=-1;
@@ -597,7 +602,7 @@
           }
         });
 
-        cell.style.gridColumn=String(entry.slotIndex%side+1);cell.style.gridRow=String(Math.floor(entry.slotIndex/side)+1);slots.push(entry);
+        cell.style.gridColumn=String(entry.slotIndex%cols+1);cell.style.gridRow=String(Math.floor(entry.slotIndex/cols)+1);slots.push(entry);
         new YT.Player(frame.id,{events:{
           onReady:event=>{
             entry.yt=event.target;
@@ -628,7 +633,10 @@
           onAutoplayBlocked:()=>setStatus('ブラウザの自動再生制限により停止している場合があります。画面をクリックして再生してください。',true)
         }});
       });
-      const n=Math.max(slots.length,target()),sideCount=Math.ceil(Math.sqrt(n));grid.style.gridTemplateColumns=`repeat(${sideCount},minmax(0,1fr))`;grid.style.gridTemplateRows=`repeat(${sideCount},minmax(0,1fr))`;focus(0)
+      
+      grid.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
+      grid.style.gridTemplateRows=`repeat(${rows},minmax(0,1fr))`;
+      focus(0);
     }
 
     function focus(index){
@@ -663,7 +671,8 @@
       if(key==='escape'){closePlayer();return}
       if(key==='tab'||['w','a','s','d'].includes(key)){
         event.preventDefault();
-        focus(key==='tab'?(active+(event.shiftKey?-1:1)):key==='a'?active-1:key==='d'?active+1:key==='w'?active-Math.ceil(Math.sqrt(target())):active+Math.ceil(Math.sqrt(target())));
+        const cols=target()===2?2:Math.ceil(Math.sqrt(target()));
+        focus(key==='tab'?(active+(event.shiftKey?-1:1)):key==='a'?active-1:key==='d'?active+1:key==='w'?active-cols:active+cols);
         return;
       }
       const s=slots[active];
