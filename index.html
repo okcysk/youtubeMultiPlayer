@@ -513,10 +513,36 @@
       loadVideoIntoSlot(slot,slot.playlist[prevIndex]);
     }
 
+    // The IFrame API only accepts the rates getAvailablePlaybackRates() lists (0.25–2) and silently
+    // clamps anything else to 2, so 2.5× and 10× need emulating: play at the fastest allowed rate and
+    // skip ahead on a timer to cover the difference.
+    const SKIP_INTERVAL_MS=500;
     function setSlotRate(slot,rate){
       if(!slot?.yt)return;
-      if(slot.yt.setPlaybackRate){
-        slot.yt.setPlaybackRate(rate);
+      const available=slot.yt.getAvailablePlaybackRates?.()||[1];
+      const base=Math.max(1,...available.filter(r=>r<=rate));
+      slot.yt.setPlaybackRate?.(base);
+      clearInterval(slot.skipTimer);slot.skipTimer=null;
+      if(rate>base){
+        let lastWall=null,lastTime=0;
+        slot.skipTimer=setInterval(()=>{
+          const p=slot.yt;
+          if(!p||p.getPlayerState?.()!==YT.PlayerState.PLAYING){lastWall=null;return}
+          // A new video (Next / auto-advance) comes back at 1×; keep the base rate applied.
+          if(p.getPlaybackRate?.()!==base)p.setPlaybackRate(base);
+          const wall=performance.now(),time=p.getCurrentTime()||0,end=(p.getDuration()||Infinity)-0.5;
+          // Skip by what is still missing since the last tick, measured from the actual position, so the
+          // short stalls each seek causes are made up instead of dragging the speed below the target.
+          // A large jump means the user seeked (Z/X/C/V), so restart the measurement there.
+          if(lastWall!==null){
+            const wanted=rate*(wall-lastWall)/1000,moved=time-lastTime;
+            if(moved>=0&&moved<=wanted+1&&wanted>moved&&time<end){
+              const to=Math.min(end,time+wanted-moved);
+              p.seekTo(to,true);lastWall=wall;lastTime=to;return;
+            }
+          }
+          lastWall=wall;lastTime=time;
+        },SKIP_INTERVAL_MS);
       }
       slot.currentRate=rate;
       if(slot.speedBadge){
@@ -740,7 +766,7 @@
     });
     document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();selectionAnchorId=null;dragSelection=null;count.value='4';results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});
     document.querySelector('#close').addEventListener('click',closePlayer);
-    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>x.yt?.destroy());slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
+    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>{clearInterval(x.skipTimer);x.yt?.destroy()});slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
     document.querySelector('#copy').addEventListener('click',()=>share('copy'));document.querySelector('#share-x').addEventListener('click',()=>share('x'));document.querySelector('#share-line').addEventListener('click',()=>share('line'));document.querySelector('#share-threads').addEventListener('click',()=>share('threads'));
     const sharedParam=new URLSearchParams(location.hash.slice(1)).get('share'),shared=sharedParam&&decodeState(sharedParam);
     if(shared){
