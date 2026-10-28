@@ -191,7 +191,7 @@
 <body>
   <div class="sticky" id="sticky">
     <header>
-      <h1>YouTube Multi Player <small id="version">v1.0.8</small></h1>
+      <h1>YouTube Multi Player <small id="version">v1.0.9</small></h1>
       <form class="search" id="search">
         <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
         <button type="submit" id="search-button">検索</button>
@@ -221,7 +221,7 @@
   <main class="results" id="results"></main>
   <section class="player" id="player-view">
     <div class="player-head">
-      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.8</small></h2>
+      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.9</small></h2>
       <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
       <nav class="share">
         <button id="copy" disabled>リンクをコピー</button>
@@ -558,7 +558,7 @@
       await loadYT();
       const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;
       document.querySelector('#player-view').classList.add('open');setShareEnabled(false);
-      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.8${auto?' · Auto':''}</small>`;
+      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.9${auto?' · Auto':''}</small>`;
       if(auto&&items.length>1)autoNextIndex=items.length;
       
       const targetCount=target();
