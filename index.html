@@ -124,7 +124,9 @@
       top:0;
       left:0;
       right:0;
-      bottom:46px;
+      /* YouTube's seek bar sits about 73px above the bottom and its time row about 104px; the layer stops above them
+         so the seek bar can be dragged. Small players have smaller controls, hence the percentage cap. */
+      bottom:min(88px,30%);
       z-index:4;
       cursor:pointer;
       background:transparent;
@@ -132,7 +134,7 @@
     .slot-actions{
       position:absolute;
       right:10px;
-      bottom:46px;
+      bottom:min(120px,40%);
       z-index:10;
       display:flex;
       gap:6px;
@@ -162,7 +164,7 @@
     .slot-speed{
       position:absolute;
       left:10px;
-      bottom:46px;
+      bottom:min(120px,40%);
       z-index:10;
       display:none;
       padding:3px 7px;
@@ -174,6 +176,24 @@
       pointer-events:none;
       box-shadow:0 1px 4px rgba(0,0,0,.6);
     }
+    .slot-loop{
+      position:absolute;
+      left:10px;
+      bottom:calc(min(120px,40%) + 28px);
+      z-index:10;
+      display:none;
+      align-items:center;
+      gap:4px;
+      padding:2px 3px 2px 7px;
+      border-radius:4px;
+      background:#000c;
+      color:#c4f26a;
+      font-size:12px;
+      font-weight:700;
+      box-shadow:0 1px 4px rgba(0,0,0,.6);
+    }
+    .slot-loop button{border:0;padding:1px 5px;background:none;color:#eff1f5;font-size:12px;cursor:pointer}
+    .slot-loop button:hover{color:#c4f26a}
     .focus{outline:3px solid #c4f26a;outline-offset:-3px}
     @media(max-width:900px){
       header{flex-wrap:wrap}
@@ -198,7 +218,7 @@
 <body>
   <div class="sticky" id="sticky">
     <header>
-      <h1>YouTube Multi Player <small id="version">v1.0.9</small></h1>
+      <h1>YouTube Multi Player <small id="version">v1.1.0</small></h1>
       <form class="search" id="search">
         <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
         <button type="submit" id="search-button">検索</button>
@@ -228,8 +248,8 @@
   <main class="results" id="results"></main>
   <section class="player" id="player-view">
     <div class="player-head">
-      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.0.9</small></h2>
-      <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
+      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.1.0</small></h2>
+      <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · [ / ]: ループ開始 / 終了 · L: ループ解除 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
       <nav class="share">
         <button id="copy" disabled>リンクをコピー</button>
         <button id="share-x" disabled>X</button>
@@ -469,7 +489,7 @@
     document.querySelector('#search').addEventListener('submit',event=>{event.preventDefault();search(document.querySelector('#query').value.trim())});
     function encodeState(state){const bytes=new TextEncoder().encode(JSON.stringify(state));let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
     function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,2,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
-    function updateURL(){if(!document.querySelector('#player-view').classList.contains('open'))return;const s=slots.map(slot=>{if(!slot?.yt)return null;return{i:slot.slotIndex,id:slot.video.id,title:slot.video.title,p:slot.yt.getCurrentTime?.()||0,r:slot.currentRate||slot.yt.getPlaybackRate?.()||1,m:slot.yt.isMuted?.()||false,v:slot.yt.getVolume?.()??100}});const url=new URL(location.href);url.hash=`share=${encodeState({v:1,n:target(),s})}`;history.replaceState(null,'',url)}
+    function updateURL(){if(!document.querySelector('#player-view').classList.contains('open'))return;const s=slots.map(slot=>{if(!slot?.yt)return null;return{i:slot.slotIndex,id:slot.video.id,title:slot.video.title,p:slot.yt.getCurrentTime?.()||0,r:slot.currentRate||slot.yt.getPlaybackRate?.()||1,m:slot.yt.isMuted?.()||false,v:slot.yt.getVolume?.()??100,...(slot.loop.a!=null?{la:slot.loop.a}:{}),...(slot.loop.b!=null?{lb:slot.loop.b}:{})}});const url=new URL(location.href);url.hash=`share=${encodeState({v:1,n:target(),s})}`;history.replaceState(null,'',url)}
     function startTracking(){clearInterval(shareTimer);shareTimer=setInterval(updateURL,1000);updateURL()}
     async function share(action){updateURL();const url=location.href;const links={x:`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('YouTube Multi Player')}`,line:`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`,threads:`https://www.threads.net/intent/post?text=${encodeURIComponent('YouTube Multi Player '+url)}`};if(action==='copy'){try{await navigator.clipboard.writeText(url);const b=document.querySelector('#copy');b.textContent='コピーしました';setTimeout(()=>b.textContent='リンクをコピー',1300)}catch{prompt('リンクをコピーしてください',url)}}else window.open(links[action],'_blank','noopener,noreferrer')}
     function setShareEnabled(enabled){document.querySelectorAll('.share button').forEach(button=>button.disabled=!enabled)}
@@ -477,6 +497,8 @@
     function loadVideoIntoSlot(entry,nextVideo){
       if(!nextVideo)return;
       entry.video=nextVideo;
+      // A loop range belongs to one video, so a different video starts without one.
+      entry.loop={a:null,b:null};renderLoop(entry);
       if(entry.yt?.loadVideoById){
         entry.yt.loadVideoById(nextVideo.id);
         entry.yt.playVideo();
@@ -519,6 +541,48 @@
       const prevIndex=(slot.index-1+slot.playlist.length)%slot.playlist.length;
       slot.index=prevIndex;
       loadVideoIntoSlot(slot,slot.playlist[prevIndex]);
+    }
+
+    // A-B loop. With only A set the loop runs to the video's end; with only B it starts from 0:00.
+    const loopTime=seconds=>{const m=Math.floor(seconds/60),s=(seconds%60).toFixed(1).padStart(4,'0');return `${m}:${s}`};
+    const loopLabel=range=>`${loopTime(range.start)} – ${Number.isFinite(range.end)?loopTime(range.end):'最後'}`;
+    function loopRange(entry){
+      const {a,b}=entry.loop;
+      if(a==null&&b==null)return null;
+      const start=a??0,end=b??Infinity;
+      return end>start?{start,end}:null;
+    }
+    function renderLoop(entry){
+      const range=loopRange(entry);
+      entry.loopBadge.style.display=range?'flex':'none';
+      if(range)entry.loopText.textContent=`🔁 ${loopLabel(range)}`;
+    }
+    function setLoopPoint(entry,which){
+      if(!entry.yt)return;
+      entry.loop[which]=Math.round((entry.yt.getCurrentTime()||0)*10)/10;
+      // B before A (or A after B) just swaps them, so the order the points are set in does not matter.
+      if(entry.loop.a!=null&&entry.loop.b!=null&&entry.loop.b<entry.loop.a)entry.loop={a:entry.loop.b,b:entry.loop.a};
+      renderLoop(entry);
+      const range=loopRange(entry);
+      setStatus(range?`スロット${entry.slotIndex+1}をループ再生: ${loopLabel(range)}`:`スロット${entry.slotIndex+1}のループ${which==='a'?'開始':'終了'}を${loopTime(entry.loop[which])}にしました。`);
+      updateURL();
+    }
+    function clearLoop(entry){
+      entry.loop={a:null,b:null};renderLoop(entry);
+      setStatus(`スロット${entry.slotIndex+1}のループを解除しました。`);
+      updateURL();
+    }
+    // One timer for every slot: past B, jump back to A. It also catches the jumps the 2.5×/10× emulation makes.
+    let loopTimer=null;
+    function startLoopTimer(){
+      clearInterval(loopTimer);
+      loopTimer=setInterval(()=>{
+        for(const slot of slots){
+          const range=slot.yt&&loopRange(slot);
+          if(!range||!Number.isFinite(range.end)||slot.yt.getPlayerState?.()!==YT.PlayerState.PLAYING)continue;
+          if((slot.yt.getCurrentTime()||0)>=range.end-0.05)slot.yt.seekTo(range.start,true);
+        }
+      },150);
     }
 
     // The IFrame API only accepts the rates getAvailablePlaybackRates() lists (0.25–2) and silently
@@ -565,7 +629,7 @@
       await loadYT();
       const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;
       document.querySelector('#player-view').classList.add('open');setShareEnabled(false);
-      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.0.9${auto?' · Auto':''}</small>`;
+      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.1.0${auto?' · Auto':''}</small>`;
       if(auto&&items.length>1)autoNextIndex=items.length;
       
       const targetCount=target();
@@ -580,7 +644,15 @@
         const actions=document.createElement('span');actions.className='slot-actions';
         const backBtn=document.createElement('button');backBtn.type='button';backBtn.textContent='Back';
         const nextBtn=document.createElement('button');nextBtn.type='button';nextBtn.textContent='Next';
-        actions.append(backBtn,nextBtn);
+        const loopABtn=document.createElement('button');loopABtn.type='button';loopABtn.textContent='A';loopABtn.title='今の位置をループ開始にする（[ キー）';
+        const loopBBtn=document.createElement('button');loopBBtn.type='button';loopBBtn.textContent='B';loopBBtn.title='今の位置をループ終了にする（] キー）';
+        actions.append(loopABtn,loopBBtn,backBtn,nextBtn);
+
+        // ループ範囲バッジ（速度バッジの上）。× で解除
+        const loopBadge=document.createElement('span');loopBadge.className='slot-loop';
+        const loopText=document.createElement('span');
+        const loopClear=document.createElement('button');loopClear.type='button';loopClear.textContent='×';loopClear.title='ループ解除（L キー）';
+        loopBadge.append(loopText,loopClear);
 
         // 再生速度バッジ (左下)
         const speedBadge=document.createElement('span');speedBadge.className='slot-speed';speedBadge.textContent='1.00×';
@@ -602,13 +674,18 @@
         if(saved?.p>0)embed.searchParams.set('start',String(Math.floor(saved.p)));
         frame.src=embed.href;
 
-        cell.append(actions,speedBadge,overlay,frame);
+        cell.append(actions,speedBadge,loopBadge,overlay,frame);
         grid.append(cell);
 
-        const entry={cell,speedBadge,video:item,yt:null,index,slotIndex:Number.isInteger(item.slotIndex)?item.slotIndex:index,playlist:items,restore:saved,autoMode:auto,history:[item],currentRate:saved?.r||1};
+        const entry={cell,speedBadge,video:item,yt:null,index,slotIndex:Number.isInteger(item.slotIndex)?item.slotIndex:index,playlist:items,restore:saved,autoMode:auto,history:[item],currentRate:saved?.r||1,loopBadge,loopText,
+          loop:{a:Number.isFinite(saved?.la)?saved.la:null,b:Number.isFinite(saved?.lb)?saved.lb:null}};
+        renderLoop(entry);
         
         backBtn.addEventListener('click',()=>previousSlot(entry));
         nextBtn.addEventListener('click',()=>nextSlot(entry));
+        loopABtn.addEventListener('click',()=>setLoopPoint(entry,'a'));
+        loopBBtn.addEventListener('click',()=>setLoopPoint(entry,'b'));
+        loopClear.addEventListener('click',()=>clearLoop(entry));
 
         // オーバーレイ操作: クリックでフォーカス＆再生/停止
         overlay.addEventListener('click',()=>{
@@ -649,6 +726,9 @@
             }
             if(entry.restore){
               if(entry.restore.p>0)entry.yt.seekTo(entry.restore.p,true);
+              // A shared link may have been copied while the video was outside its loop; start at the loop instead.
+              const range=loopRange(entry),p=entry.restore.p||0;
+              if(range&&(p<range.start||p>=range.end))entry.yt.seekTo(range.start,true);
               if(entry.restore.r){
                 setSlotRate(entry,entry.restore.r);
               }
@@ -657,8 +737,11 @@
             if(slots.every(x=>x.yt)){setShareEnabled(true);startTracking()}
           },
           onStateChange:event=>{
-            if(event.data===YT.PlayerState.ENDED&&entry.autoMode){
-              advanceSlot(entry);
+            if(event.data===YT.PlayerState.ENDED){
+              // A loop wins over auto-advance: a loop that runs to the end starts over at A.
+              const range=loopRange(entry);
+              if(range){entry.yt.seekTo(range.start,true);entry.yt.playVideo();return}
+              if(entry.autoMode)advanceSlot(entry);
             }
           },
           onError:event=>{
@@ -669,6 +752,7 @@
         }});
       });
       
+      startLoopTimer();
       grid.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
       grid.style.gridTemplateRows=`repeat(${rows},minmax(0,1fr))`;
       focus(0);
@@ -747,6 +831,12 @@
         const cur=s.currentRate||s.yt.getPlaybackRate?.()||1;
         const next=Math.abs(cur-10)<0.1?1:10;
         setSlotRate(s,next);
+      }else if(key==='['||key===']'){
+        event.preventDefault();
+        setLoopPoint(s,key==='['?'a':'b');
+      }else if(key==='l'){
+        event.preventDefault();
+        clearLoop(s);
       }else if(key==='b'){
         event.preventDefault();
         previousSlot(s);
@@ -774,7 +864,7 @@
     });
     document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();selectionAnchorId=null;dragSelection=null;count.value='4';results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});
     document.querySelector('#close').addEventListener('click',closePlayer);
-    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);slots.forEach(x=>{clearInterval(x.skipTimer);x.yt?.destroy()});slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
+    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);clearInterval(loopTimer);slots.forEach(x=>{clearInterval(x.skipTimer);x.yt?.destroy()});slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
     document.querySelector('#copy').addEventListener('click',()=>share('copy'));document.querySelector('#share-x').addEventListener('click',()=>share('x'));document.querySelector('#share-line').addEventListener('click',()=>share('line'));document.querySelector('#share-threads').addEventListener('click',()=>share('threads'));
     const sharedParam=new URLSearchParams(location.hash.slice(1)).get('share'),shared=sharedParam&&decodeState(sharedParam);
     if(shared){
