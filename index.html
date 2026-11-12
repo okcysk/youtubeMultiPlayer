@@ -116,6 +116,9 @@
     .share{display:flex;gap:5px}
     .share button,.close{border:1px solid #555b66;border-radius:7px;padding:7px 9px;background:#262a32;color:#fff;cursor:pointer}
     .share button:disabled{opacity:.45;cursor:wait}
+    .sync-toggle{border:1px solid #555b66;border-radius:7px;padding:7px 9px;background:#262a32;color:#fff;cursor:pointer}
+    .sync-toggle:hover{border-color:#c4f26a}
+    .sync-toggle[aria-pressed="true"]{border-color:#c4f26a;background:#c4f26a;color:#19210e}
     .grid{display:grid;gap:3px;min-height:0;background:#000}
     .slot{position:relative;min-width:0;min-height:0;background:#000;overflow:hidden}
     .slot iframe{width:100%;height:100%;border:0}
@@ -218,7 +221,7 @@
 <body>
   <div class="sticky" id="sticky">
     <header>
-      <h1>YouTube Multi Player <small id="version">v1.1.0</small></h1>
+      <h1>YouTube Multi Player <small id="version">v1.2.0</small></h1>
       <form class="search" id="search">
         <input id="query" placeholder="YouTube検索" aria-label="YouTube検索">
         <button type="submit" id="search-button">検索</button>
@@ -248,8 +251,9 @@
   <main class="results" id="results"></main>
   <section class="player" id="player-view">
     <div class="player-head">
-      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.1.0</small></h2>
-      <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · [ / ]: ループ開始 / 終了 · L: ループ解除 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
+      <h2 id="player-title">YouTube Multi Player <small id="player-version">v1.2.0</small></h2>
+      <span class="help">Tab / W A S D: 動画選択 · B / N: 前後の動画 · Z / X: 5秒 · C / V: 30秒 · ↑ / ↓: 音量 ±10% · M: ミュート · Shift+M: 全体ミュート · F: 等速 · G: 2.5倍 · H: 10倍 · [ / ]: ループ開始 / 終了 · L: ループ解除 · ループ同期: 全画面を同じ長さでそろえて再生 · Space: 再生/停止 · Shift+Space: 全体再生/停止</span>
+      <button type="button" class="sync-toggle" id="loop-sync" aria-pressed="false" title="フォーカス中の画面のループ（A-B）を基準に、全画面のループを同じ長さにそろえ、同時に頭へ戻します">ループ同期 OFF</button>
       <nav class="share">
         <button id="copy" disabled>リンクをコピー</button>
         <button id="share-x" disabled>X</button>
@@ -489,7 +493,7 @@
     document.querySelector('#search').addEventListener('submit',event=>{event.preventDefault();search(document.querySelector('#query').value.trim())});
     function encodeState(state){const bytes=new TextEncoder().encode(JSON.stringify(state));let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
     function decodeState(value){try{const raw=value.replace(/-/g,'+').replace(/_/g,'/'),binary=atob(raw+'='.repeat((4-raw.length%4)%4)),data=JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));if(data.v!==1||![1,2,4,9,16].includes(data.n)||!Array.isArray(data.s))return null;data.s=data.s.slice(0,16).filter(x=>x&&/^[A-Za-z0-9_-]{11}$/.test(x.id));return data}catch{return null}}
-    function updateURL(){if(!document.querySelector('#player-view').classList.contains('open'))return;const s=slots.map(slot=>{if(!slot?.yt)return null;return{i:slot.slotIndex,id:slot.video.id,title:slot.video.title,p:slot.yt.getCurrentTime?.()||0,r:slot.currentRate||slot.yt.getPlaybackRate?.()||1,m:slot.yt.isMuted?.()||false,v:slot.yt.getVolume?.()??100,...(slot.loop.a!=null?{la:slot.loop.a}:{}),...(slot.loop.b!=null?{lb:slot.loop.b}:{})}});const url=new URL(location.href);url.hash=`share=${encodeState({v:1,n:target(),s})}`;history.replaceState(null,'',url)}
+    function updateURL(){if(!document.querySelector('#player-view').classList.contains('open'))return;const s=slots.map(slot=>{if(!slot?.yt)return null;return{i:slot.slotIndex,id:slot.video.id,title:slot.video.title,p:slot.yt.getCurrentTime?.()||0,r:slot.currentRate||slot.yt.getPlaybackRate?.()||1,m:slot.yt.isMuted?.()||false,v:slot.yt.getVolume?.()??100,...(slot.loop.a!=null?{la:slot.loop.a}:{}),...(slot.loop.b!=null?{lb:slot.loop.b}:{})}});const url=new URL(location.href);url.hash=`share=${encodeState({v:1,n:target(),s,...(syncBase?{ls:syncBase.slotIndex}:{})})}`;history.replaceState(null,'',url)}
     function startTracking(){clearInterval(shareTimer);shareTimer=setInterval(updateURL,1000);updateURL()}
     async function share(action){updateURL();const url=location.href;const links={x:`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('YouTube Multi Player')}`,line:`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`,threads:`https://www.threads.net/intent/post?text=${encodeURIComponent('YouTube Multi Player '+url)}`};if(action==='copy'){try{await navigator.clipboard.writeText(url);const b=document.querySelector('#copy');b.textContent='コピーしました';setTimeout(()=>b.textContent='リンクをコピー',1300)}catch{prompt('リンクをコピーしてください',url)}}else window.open(links[action],'_blank','noopener,noreferrer')}
     function setShareEnabled(enabled){document.querySelectorAll('.share button').forEach(button=>button.disabled=!enabled)}
@@ -498,6 +502,7 @@
       if(!nextVideo)return;
       entry.video=nextVideo;
       // A loop range belongs to one video, so a different video starts without one.
+      if(entry===syncBase)setLoopSync(false);
       entry.loop={a:null,b:null};renderLoop(entry);
       if(entry.yt?.loadVideoById){
         entry.yt.loadVideoById(nextVideo.id);
@@ -555,22 +560,81 @@
     function renderLoop(entry){
       const range=loopRange(entry);
       entry.loopBadge.style.display=range?'flex':'none';
-      if(range)entry.loopText.textContent=`🔁 ${loopLabel(range)}`;
+      if(range)entry.loopText.textContent=`🔁 ${entry===syncBase?'基準 ':inSync(entry)?'同期 ':''}${loopLabel(range)}`;
     }
     function setLoopPoint(entry,which){
       if(!entry.yt)return;
       entry.loop[which]=Math.round((entry.yt.getCurrentTime()||0)*10)/10;
+      // In a sync another slot's B is derived from its A, so a new A must not be swapped with the old derived B.
+      if(syncBase&&entry!==syncBase&&which==='a')entry.loop.b=null;
       // B before A (or A after B) just swaps them, so the order the points are set in does not matter.
       if(entry.loop.a!=null&&entry.loop.b!=null&&entry.loop.b<entry.loop.a)entry.loop={a:entry.loop.b,b:entry.loop.a};
+      if(syncBase&&syncLoopUpdated(entry,which))return;
       renderLoop(entry);
       const range=loopRange(entry);
       setStatus(range?`スロット${entry.slotIndex+1}をループ再生: ${loopLabel(range)}`:`スロット${entry.slotIndex+1}のループ${which==='a'?'開始':'終了'}を${loopTime(entry.loop[which])}にしました。`);
       updateURL();
     }
     function clearLoop(entry){
+      if(entry===syncBase)setLoopSync(false);
       entry.loop={a:null,b:null};renderLoop(entry);
       setStatus(`スロット${entry.slotIndex+1}のループを解除しました。`);
       updateURL();
+    }
+    // Loop sync: one slot's A-B loop is the reference. Every other slot with an A loops the same length (B = A + length),
+    // and all of them go back to their A together whenever the reference loops. A slot that reaches its B or its
+    // video's end first (a video shorter than A + length) pauses there and waits for that shared restart.
+    let syncBase=null;
+    const inSync=entry=>Boolean(syncBase)&&entry!==syncBase&&entry.loop.a!=null;
+    const syncLength=()=>{const range=syncBase&&loopRange(syncBase);return range&&Number.isFinite(range.end)?range.end-range.start:0};
+    function applySyncLengths(){
+      const length=syncLength();
+      for(const slot of slots){
+        if(inSync(slot))slot.loop.b=Math.round((slot.loop.a+length)*10)/10;
+        renderLoop(slot);
+      }
+    }
+    function restartSynced(){
+      for(const slot of slots){
+        if(!slot.yt||(slot!==syncBase&&!inSync(slot)))continue;
+        slot.yt.seekTo(loopRange(slot).start,true);slot.yt.playVideo();
+      }
+    }
+    function paintLoopSync(){
+      const button=document.querySelector('#loop-sync');
+      button.setAttribute('aria-pressed',String(Boolean(syncBase)));button.textContent=`ループ同期 ${syncBase?'ON':'OFF'}`;
+    }
+    function setLoopSync(on,base=slots[active]){
+      if(on){
+        // The focused slot is the reference if it has a full A-B loop; otherwise the first slot that does.
+        const full=slot=>{const range=slot&&loopRange(slot);return Boolean(range&&Number.isFinite(range.end))};
+        base=full(base)?base:slots.find(full);
+        if(!base){setStatus('ループ同期の前に、基準にする画面で A と B を設定してください。',true);return}
+      }
+      syncBase=on?base:null;
+      paintLoopSync();
+      slots.forEach(renderLoop);
+      if(on){
+        applySyncLengths();restartSynced();
+        const others=slots.filter(inSync).length;
+        setStatus(`ループ同期: スロット${base.slotIndex+1}を基準に ${loopTime(syncLength())} でそろえます。${others?`同期中の画面: ${others}`:'他の画面で A を押すと、同じ長さで切り取ります。'}`);
+      }else setStatus('ループ同期をオフにしました。各画面は自分のループを繰り返します。');
+      updateURL();
+    }
+    // Returns true when it handled the point (and the status line) itself.
+    function syncLoopUpdated(entry,which){
+      const range=loopRange(entry);
+      if(which==='b'||entry===syncBase){
+        // B on any slot, or a change to the reference, sets the length everyone follows.
+        if(!range||!Number.isFinite(range.end))return false;
+        syncBase=entry;
+      }else if(which==='a'){
+        entry.loop.b=null;
+      }else return false;
+      applySyncLengths();restartSynced();
+      setStatus(`ループ同期: ${loopTime(syncLength())} の長さで、スロット${entry.slotIndex+1}を${entry===syncBase?'基準にしました':`${loopLabel(loopRange(entry))} で切り取りました`}。`);
+      updateURL();
+      return true;
     }
     // One timer for every slot: past B, jump back to A. It also catches the jumps the 2.5×/10× emulation makes.
     let loopTimer=null;
@@ -580,7 +644,10 @@
         for(const slot of slots){
           const range=slot.yt&&loopRange(slot);
           if(!range||!Number.isFinite(range.end)||slot.yt.getPlayerState?.()!==YT.PlayerState.PLAYING)continue;
-          if((slot.yt.getCurrentTime()||0)>=range.end-0.05)slot.yt.seekTo(range.start,true);
+          if((slot.yt.getCurrentTime()||0)<range.end-0.05)continue;
+          if(slot===syncBase)restartSynced();
+          else if(inSync(slot))slot.yt.pauseVideo();
+          else slot.yt.seekTo(range.start,true);
         }
       },150);
     }
@@ -627,9 +694,9 @@
     async function openPlayer(items,auto=false,state=null){
       if(!items.length||(!auto&&items.length>target()))return;
       await loadYT();
-      const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;
+      const grid=document.querySelector('#grid');grid.replaceChildren();slots.length=0;syncBase=null;paintLoopSync();
       document.querySelector('#player-view').classList.add('open');setShareEnabled(false);
-      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.1.0${auto?' · Auto':''}</small>`;
+      document.querySelector('#player-title').innerHTML=`YouTube Multi Player <small id="player-version">v1.2.0${auto?' · Auto':''}</small>`;
       if(auto&&items.length>1)autoNextIndex=items.length;
       
       const targetCount=target();
@@ -734,12 +801,19 @@
               }
             }
             entry.yt.playVideo();
-            if(slots.every(x=>x.yt)){setShareEnabled(true);startTracking()}
+            if(slots.every(x=>x.yt)){
+              const base=Number.isInteger(state?.ls)&&slots.find(x=>x.slotIndex===state.ls);
+              if(base)setLoopSync(true,base);
+              setShareEnabled(true);startTracking();
+            }
           },
           onStateChange:event=>{
             if(event.data===YT.PlayerState.ENDED){
               // A loop wins over auto-advance: a loop that runs to the end starts over at A.
               const range=loopRange(entry);
+              // In a sync the reference restarts everyone; any other synced slot waits at its end for that restart.
+              if(entry===syncBase){restartSynced();return}
+              if(inSync(entry))return;
               if(range){entry.yt.seekTo(range.start,true);entry.yt.playVideo();return}
               if(entry.autoMode)advanceSlot(entry);
             }
@@ -864,7 +938,8 @@
     });
     document.querySelector('#clear').addEventListener('click',()=>{chosen.clear();selectionAnchorId=null;dragSelection=null;count.value='4';results.querySelectorAll('input').forEach(x=>{x.checked=false;x.closest('.card').classList.remove('selected')});updateSelection()});
     document.querySelector('#close').addEventListener('click',closePlayer);
-    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);clearInterval(loopTimer);slots.forEach(x=>{clearInterval(x.skipTimer);x.yt?.destroy()});slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
+    document.querySelector('#loop-sync').addEventListener('click',()=>setLoopSync(!syncBase));
+    function closePlayer(){document.querySelector('#player-view').classList.remove('open');clearInterval(shareTimer);clearInterval(loopTimer);syncBase=null;slots.forEach(x=>{clearInterval(x.skipTimer);x.yt?.destroy()});slots.length=0;history.replaceState(null,'',location.pathname+location.search);if(!videos.length)search(document.querySelector('#query').value.trim())}
     document.querySelector('#copy').addEventListener('click',()=>share('copy'));document.querySelector('#share-x').addEventListener('click',()=>share('x'));document.querySelector('#share-line').addEventListener('click',()=>share('line'));document.querySelector('#share-threads').addEventListener('click',()=>share('threads'));
     const sharedParam=new URLSearchParams(location.hash.slice(1)).get('share'),shared=sharedParam&&decodeState(sharedParam);
     if(shared){
